@@ -3,13 +3,14 @@
 *
 * conecta con la API de openweather para obtener información climática
 *
+* ademas hay funciones que:
+*   conecta con la api de la hora
+*   conecta con la funcion de web scraping
 *
 * */
 
 import 'package:http/http.dart' as http;
-import 'package:html/dom.dart' as dom;
 import 'dart:convert';
-import 'package:smweather/services/country_web_scrapper.dart';
 import '../models/time_model.dart';
 
 
@@ -18,13 +19,10 @@ class NetworkHelper {
 
   NetworkHelper({required this.apiKey});
 
-  /// Función que llama al scraper para obtener los datos de la web
-  Future<void> extractCountriesData() async{
-    try {
-    }catch(e){
-      throw Exception("Error al hacer web scraping: $e");
-    }
-  }
+
+  ///
+  /// Llamada a la API openweather para Obtener el tiempo actual
+  ///
 
   Future<dynamic> getWeatherData(String city) async {
     var url = Uri.parse(
@@ -32,7 +30,7 @@ class NetworkHelper {
 
     // Llamada a la API para obtener los datos
     http.Response response = await http.get(url);
-    print(response.body);
+
     if (response.statusCode == 200) {
       // OK
       return jsonDecode(response.body);
@@ -42,12 +40,13 @@ class NetworkHelper {
   }
 }
 
+/**
+ * Llamar a la función getCountries alojada en Google Cloud
+ * y
+ */
   Future<dynamic> getCountriesList() async{
 
-    ///
-    /// Esta función ha sido creada por nosotros, está alojada en un servidor
-    /// node.js en Google Cloud.
-    ///
+
     var url = Uri.parse(
         'https://europe-west3-smweather-350312.cloudfunctions.net/countries');
 
@@ -57,12 +56,12 @@ class NetworkHelper {
     print(response.body);
 
     if (response.statusCode == 200) {
-
       dynamic countriesList = jsonDecode(response.body);
+      return countriesList;
       // OK
       return jsonDecode(response.body);
     } else {
-      throw Exception('Error al obtener la info meteorológica');
+      throw Exception('Error al obtener los paises');
     }
 
   }

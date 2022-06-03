@@ -64,6 +64,7 @@ class Weather {
 
 
   factory Weather.fromJson(Map<String, dynamic> json) {
+
     Coord coordinates = Coord(
       latitud: json["coord"]["lat"],
       longitud: json["coord"]["lon"],
@@ -86,16 +87,4 @@ class Weather {
   get getWeatherSituation => weatherSituation;
 
   String getIconUrl() => "https://openweathermap.org/img/w/$iconUrl.png";
-
-  /*
-  get getTemp => temp;
-
-  get getTempMin => tempMin;
-
-  get getTempMax => tempMax;
-
-  get getHumidity => humidity;
-
-  get getWindSpeed => windSpeed;
-  */
 }

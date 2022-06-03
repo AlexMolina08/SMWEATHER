@@ -7,155 +7,58 @@ import 'package:smweather/widgets/about_button/about_button.dart';
 import 'package:smweather/widgets/city_textfield.dart';
 import 'package:smweather/widgets/weather_data_panel.dart';
 import 'package:smweather/view/background.dart';
-import 'package:transparent_image/transparent_image.dart';
-
 import 'package:rive/rive.dart';
+import 'package:smweather/widgets/flag_network_image.dart';
 
 const kApiKey = '5105205f11dcbbef204363200377dc17';
 
 class Home extends StatefulWidget {
-  const Home({Key? key}) : super(key: key);
+  /// JSON convertido a map
+  final Map<String, dynamic> countriesList;
+
+  const Home({Key? key, required this.countriesList}) : super(key: key);
 
   @override
   State<Home> createState() => _HomeState();
 }
 
 class _HomeState extends State<Home> {
-  // crear nuevo network helper, pasar la api key
+  /********* ATRIBUTOS ***************/
+
+  /// Vars. para el gradiente del fondo
+  int index = 0;
+  Color bottomColor = Colors.red.shade500;
+  Color topColor = Colors.yellow.shade400;
+  Alignment begin = Alignment.bottomLeft;
+  Alignment end = Alignment.topRight;
+
+  /// crear nuevo network helper, pasar la api key
   NetworkHelper networkHelper = NetworkHelper(apiKey: kApiKey);
 
-  /// ---- Variables que se muestran
+  /// ---- Variables mostradas en la UI -------
   String inputValue = '';
   String searchedCity = '';
   String locationTime = '';
   String locationDate = '';
   String locationCountry = '';
 
-  /// -----
-
   late RiveAnimationController _controller;
-  late Map<String, dynamic> _countriesList;
 
-  // El tiempo de la ciudad buscada
+  /// El tiempo de la ciudad buscada
   Weather currentWeather = Weather.initial();
 
-  // Variables para el control del estado de la peticion getWeather
-  // esta implementación es mejorable utilizando clases
-  // se podrá implementar en el futuro.
+  /// Variables para el control del estado de la peticion getWeather
+  /// esta implementación es mejorable utilizando clases
+  /// se podrá implementar en el futuro.
   bool loading = false, loaded = false, error = false;
 
   /// variables para el control del estado de la peticion getTime
   bool fetchingTime = false, timeLoaded = false, fetchingTimeError = false;
 
-  /// variables para el control del estado de la peticion getCountries
-  bool fetchingCountries = false, countriesLoaded = false;
+  /// instancia de forecast state
 
-  Future<void> updateCountriesList() async {
-    setState(() {
-      fetchingCountries = true;
-      countriesLoaded = false;
-    });
-    _countriesList = await getCountriesList();
-    setState(() {
-      fetchingCountries = false;
-      countriesLoaded = true;
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    /// Al ejecutar la pantalla principal por primera vez, obtener la lista
-    /// de los paises
-    updateCountriesList();
-    _controller = SimpleAnimation('Animation 1', autoplay: true);
-  }
-
-  Future<void> getCurrentTime() async {
-    try {
-      setState(() {
-        fetchingTime = true;
-        timeLoaded = false;
-        fetchingTimeError = false;
-      });
-      TimeData timeD = await getTime(currentWeather.coordinates.latitud,
-          currentWeather.coordinates.longitud);
-      locationDate = _formatDate(timeD);
-      locationTime = timeD.time;
-      setState(() {
-        fetchingTime = false;
-        timeLoaded = true;
-        fetchingTimeError = false;
-      });
-    } catch (e) {
-      setState(() {
-        fetchingTime = false;
-        timeLoaded = false;
-      });
-    }
-  }
-
-  Future<void> getWeather() async {
-    try {
-      setState(() {
-        loading = true;
-      });
-      // Llamada a la api
-      var data = await networkHelper.getWeatherData(searchedCity);
-      currentWeather = Weather.fromJson(data);
-      loading = false;
-      locationCountry = _countriesList[currentWeather.country];
-      loaded = true;
-      error = false;
-      setState(() {});
-    } catch (e) {
-      setState(
-        () {
-          loading = false;
-          loaded = false;
-          error = true;
-        },
-      );
-    }
-  }
-
-  /// Obtener todos los datos en base al estado de la aplicación,
-  /// esto es el valor de las variables en el momento de llamar a esta función
-  void _fetchData() async {
-    getWeather();
-    getCurrentTime();
-  }
-
-  /// Poner la fecha en el formato: dd-MM-yyyy
-  String _formatDate(TimeData timeData) {
-    final DateFormat formatter = DateFormat('dd-MM-yyyy');
-
-    return formatter.format(
-      DateTime.parse(timeData.date),
-    );
-  }
-
-  // -----
-  List<Color> colorList = [
-    Colors.red,
-    Colors.blue,
-    Colors.green,
-    Colors.yellow
-  ];
-  List<Alignment> alignmentList = [
-    Alignment.bottomLeft,
-    Alignment.bottomRight,
-    Alignment.topRight,
-    Alignment.topLeft,
-  ];
-  int index = 0;
-  Color bottomColor = Colors.red;
-  Color topColor = Colors.yellow;
-  Alignment begin = Alignment.bottomLeft;
-  Alignment end = Alignment.topRight;
-
-  // ----
+  /// variables para el control del estado de la peticion getForecast
+  bool fetchingForecast = false, forecastLoaded = false, forecastError = false;
 
   @override
   Widget build(BuildContext context) {
@@ -177,11 +80,13 @@ class _HomeState extends State<Home> {
               Align(
                 alignment: Alignment.topLeft,
                 child: Container(
-                  margin: EdgeInsets.only(left: 20.0, top: 10.0),
-                  child: AboutButton()
-                ),
+                    margin: EdgeInsets.only(left: 20.0, top: 10.0),
+                    child: AboutButton(),),
               ),
+
+
               // Imagen de cada flag
+              /// loaded indica si está cargado el tiempo del lugar
               loaded
                   ? FlagNetworkImage(countryID: currentWeather.country)
                   : Container(
@@ -209,54 +114,37 @@ class _HomeState extends State<Home> {
 
               /// Mostrar el textfield y el boton de busqueda una vez hecho
               /// el scraping de los paises
-              countriesLoaded
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        // LD
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10.0),
-                          child: cityTextField(
-                            /*
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // LD
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10.0),
+                    child: cityTextField(
+                      /*
                       * Almacenamos en un string lo que va introduciendo el usuario,
                       * */
-                            onChanged: (currentInput) {
-                              setState(() => searchedCity = currentInput);
-                            },
-                            onSubmitted: (value) async {
-                              setState(
-                                () {
-                                  searchedCity = value;
-                                },
-                              );
-                              _fetchData();
-                              setState(() {});
-                            },
-                            screenWidth: screenWidth,
-                          ),
-                        ),
-                        //Button
-                        showSearchButton(
-                            screenWidth, currentWeather.coordinates)
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        const SizedBox(
-                          width: 50,
-                          height: 50,
-                          child: RiveAnimation.asset(
-                              'assets/fetching_location.riv'),
-                        ),
-                        Text(
-                          "Obteniendo Lista actualizada de países",
-                          style: TextStyle(
-                            fontSize: 13,
-                          ),
-                        )
-                      ],
+                      onChanged: (currentInput) {
+                        setState(() => searchedCity = currentInput);
+                      },
+                      onSubmitted: (value) async {
+                        // set state es para actualizar la interfaz
+                        setState(
+                          () {
+                            searchedCity = value;
+                          },
+                        );
+                        _fetchData();
+                        setState(() {});
+                      },
+                      screenWidth: screenWidth,
                     ),
+                  ),
+                  //Button
+                  showSearchButton(screenWidth, currentWeather.coordinates)
+                ],
+              ),
               loaded
                   ? Container(
                       margin: EdgeInsets.symmetric(vertical: 20.0),
@@ -298,10 +186,94 @@ class _HomeState extends State<Home> {
                               ),
                             )
                           : const SizedBox(),
+
+              loaded
+                  ? MaterialButton(
+                      onPressed: () {},
+                      child: Container(
+                        margin: EdgeInsets.all(10.0),
+                        color: Colors.red,
+                      ),
+                    )
+                  : SizedBox(),
             ],
           ),
         ),
       ),
+    );
+  }
+  /************************/
+
+  @override
+  void initState() {
+    super.initState();
+
+    /// Al ejecutar la pantalla principal por primera vez, obtener la lista
+    /// de los paises
+    _controller = SimpleAnimation('Animation 1', autoplay: true);
+  }
+
+  Future<void> getCurrentTime() async {
+    try {
+      setState(() {
+        fetchingTime = true;
+        timeLoaded = false;
+        fetchingTimeError = false;
+      });
+      TimeData timeD = await getTime(currentWeather.coordinates.latitud,
+          currentWeather.coordinates.longitud);
+      locationDate = _formatDate(timeD);
+      locationTime = timeD.time;
+      setState(() {
+        fetchingTime = false;
+        timeLoaded = true;
+        fetchingTimeError = false;
+      });
+    } catch (e) {
+      setState(() {
+        fetchingTime = false;
+        timeLoaded = false;
+      });
+    }
+  }
+
+  Future<void> getWeather() async {
+    try {
+      setState(() {
+        loading = true;
+      });
+      // Llamada a la api
+      var data = await networkHelper.getWeatherData(searchedCity);
+      currentWeather = Weather.fromJson(data);
+      loading = false;
+      locationCountry = widget.countriesList[currentWeather.country];
+      loaded = true;
+      error = false;
+      setState(() {});
+    } catch (e) {
+      setState(
+        () {
+          loading = false;
+          loaded = false;
+          error = true;
+        },
+      );
+    }
+  }
+
+  /// Obtener todos los datos en base al estado de la aplicación,
+  /// esto es el valor de las variables en el momento de llamar a esta función
+  void _fetchData() async {
+    getWeather();
+    getCurrentTime();
+  }
+
+  /// Poner la fecha en el formato: dd-MM-yyyy
+  String _formatDate(TimeData timeData) {
+    final DateFormat formatter = DateFormat('dd-MM-yyyy');
+
+    return formatter.format(
+      DateTime.parse(timeData.date),
     );
   }
 
@@ -326,7 +298,7 @@ class _HomeState extends State<Home> {
 
     if (fetchingTime) return const Text("Obteniendo datos del tiempo ...");
 
-    if (timeLoaded)
+    if (timeLoaded) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -351,41 +323,22 @@ class _HomeState extends State<Home> {
           ),
         ],
       );
+    }
 
     return Container();
   }
 }
 
-/*
-* Imagen de cada país, obtenida por su identificador de dos caracteres
-* a través de la API
-* */
-class FlagNetworkImage extends StatelessWidget {
-  final String apiUrl = 'https://countryflagsapi.com/png/';
-  final String countryID;
-
-  const FlagNetworkImage({
-    required this.countryID,
-  });
+class WeatherForecastPanel extends StatefulWidget {
+  const WeatherForecastPanel({Key? key}) : super(key: key);
 
   @override
+  State<WeatherForecastPanel> createState() => _WeatherForecastPanelState();
+}
+
+class _WeatherForecastPanelState extends State<WeatherForecastPanel> {
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 150,
-      height: 100,
-      margin: EdgeInsets.all(35.0),
-      child: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.rectangle,
-          borderRadius: BorderRadius.circular(10.0),
-          image: DecorationImage(
-            fit: BoxFit.cover,
-            image: NetworkImage(
-              "$apiUrl$countryID",
-            ),
-          ),
-        ),
-      ),
-    );
+    return Container();
   }
 }
